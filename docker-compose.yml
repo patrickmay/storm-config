@@ -1,0 +1,55 @@
+aerospike:
+  image: aerospike/aerospike-server
+  ports:
+   - "3000:3000"
+   - "3001:3001"
+   - "3002:3002"
+   - "3003:3003"
+zk:
+  image: patrickmay/zookeeper:3.4.6-jessie
+  ports:
+   - "2181:2181"
+  command: /usr/local/zookeeper/bin/zkServer.sh start-foreground
+kafka0:
+  image: patrickmay/kafka:0.8.2.1-jessie
+  ports:
+   - "9092:9092"
+  command: /usr/local/bin/start-kafka.sh 0 192.168.99.100 9092
+  links:
+   - zk
+kafka1:
+  image: patrickmay/kafka:0.8.2.1-jessie
+  ports:
+   - "9093:9092"
+  command: /usr/local/bin/start-kafka.sh 1 192.168.99.100 9093
+  links:
+   - zk
+kafka2:
+  image: patrickmay/kafka:0.8.2.1-jessie
+  ports:
+   - "9094:9092"
+  command: /usr/local/bin/start-kafka.sh 2 192.168.99.100 9094
+  links:
+   - zk
+nimbus:
+  image: patrickmay/storm:0.9.5-jessie
+  ports:
+   - "6627:6627"
+  command: /usr/local/apache-storm/bin/storm nimbus
+  links:
+   - zk
+supervisor:
+  image: patrickmay/storm:0.9.5-jessie
+  command: /usr/local/apache-storm/bin/storm supervisor
+  links:
+   - zk
+   - nimbus
+   - aerospike
+stormui:
+  image: patrickmay/storm:0.9.5-jessie
+  ports:
+   - "9090:8080"
+  command: /usr/local/apache-storm/bin/storm ui
+  links:
+   - zk
+   - nimbus

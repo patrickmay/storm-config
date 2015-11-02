@@ -1,0 +1,153 @@
+<?xml version="1.0"?>
+
+<project name="storm-config"
+         default="usage"
+         basedir=".">
+
+  <property environment="env"/>
+  <property file="${basedir}/build.properties"/>
+
+  <property name="lib" value="${basedir}/lib"/>
+  <property name="build.root" value="${basedir}/build"/>
+  <property name="build.config" value="${build.root}/config"/>
+  <property name="build.staging" value="${basedir}/staging"/>
+  <property name="staging.jar" value="${build.staging}/dependencies.jar"/>
+
+  <property name="producer.src" value="${basedir}/src"/>
+  <property name="producer.fullname"
+            value="org.softwarematters.storm.echo.KafkaProducer"/>
+  <property name="producer.jar" value="${lib}/producer.jar"/>
+
+  <property name="topology.src" value="${basedir}/src"/>
+  <property name="topology.config" value="${basedir}/config"/>
+  <property name="topology.fullname"
+            value="org.softwarematters.storm.echo.EchoTopology"/>
+  <property name="topology.jar" value="${lib}/topology.jar"/>
+
+  <property name="slf4j.lib" value="${slf4j-home}/"/>
+  <property name="zookeeper.lib" value="${zookeeper-home}/"/>
+  <property name="kafka.lib" value="${kafka-home}/libs/"/>
+  <property name="storm.lib" value="${storm-home}/lib/"/>
+  <property name="storm.kafka.lib" value="${storm-home}/external/storm-kafka/"/>
+
+  <path id="master-classpath">
+    <fileset dir="${slf4j.lib}">
+      <include name="slf4j-api-1.7.12.jar"/>
+      <include name="slf4j-simple-1.7.12.jar"/>
+    </fileset>
+
+    <fileset dir="${kafka.lib}">
+      <include name="*.jar"/>
+    </fileset>
+
+    <fileset dir="${storm.lib}">
+      <include name="*.jar"/>
+    </fileset>
+
+    <fileset dir="${storm.kafka.lib}">
+      <include name="storm-kafka-0.9.5.jar"/>
+    </fileset>
+  </path>
+
+  <target name="usage">
+    <echo level="info">
+Available targets are:
+  build    Build project in current directory.
+  clean    Remove all generated files and directories.
+  rebuild  Clean and build.
+
+  Project name = ${ant.project.name}
+  Java home = ${env.JAVA_HOME}
+    </echo>
+  </target>
+
+  <target name="make-build-dirs">
+    <mkdir dir="${build.root}"/>
+    <mkdir dir="${build.config}"/>
+    <mkdir dir="${build.staging}"/>
+    <mkdir dir="${lib}"/>
+  </target>
+
+  <target name="staging">
+    <copy todir="${build.staging}">
+      <fileset dir="${slf4j.lib}">
+        <include name="slf4j-api-1.7.12.jar"/>
+        <include name="slf4j-simple-1.7.12.jar"/>
+      </fileset>
+    
+      <fileset dir="${kafka.lib}">
+        <include name="kafka-clients-0.8.2.1.jar"/>
+        <include name="kafka_2.11-0.8.2.1.jar"/>
+        <include name="log4j-1.2.16.jar"/>
+        <include name="metrics-core-2.2.0.jar"/>
+        <include name="scala-library-2.11.5.jar"/>
+      </fileset>
+
+      <fileset dir="${storm.kafka.lib}">
+        <include name="storm-kafka-0.9.5.jar"/>
+      </fileset>
+
+      <fileset dir="${zookeeper.lib}">
+        <include name="zookeeper-3.4.6.jar"/>
+      </fileset>
+    </copy>
+
+    <jar jarfile="${staging.jar}">
+      <zipgroupfileset dir="${build.staging}" includes="**/*.jar"/>
+    </jar>
+  </target>
+  
+  <target name="config" depends="make-build-dirs">
+    <copy todir="${build.config}">
+      <fileset dir="${topology.config}">
+        <include name="*.properties"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="build" depends="make-build-dirs,staging,config">
+
+    <!-- Build the producer. -->
+
+    <javac source="1.7" target="1.7"
+           srcdir="${producer.src}" destdir="${build.root}">
+      <classpath refid="master-classpath"/>
+    </javac>
+
+    <jar basedir="${build.root}"
+         jarfile="${producer.jar}">
+      <manifest>
+        <attribute name="Main-Class" value="${producer.fullname}"/>
+      </manifest>
+      
+      <zipfileset src="${staging.jar}" excludes="META-INF/**/*"/>
+    </jar>
+    
+    <!-- Build the topology. -->
+    
+    <javac source="1.7" target="1.7"
+           srcdir="${topology.src}" destdir="${build.root}">
+    </javac>
+
+    <jar basedir="${build.root}"
+         jarfile="${topology.jar}">
+      <manifest>
+        <attribute name="Main-Class" value="${topology.fullname}"/>
+      </manifest>
+      
+      <zipfileset src="${staging.jar}" excludes="META-INF/**/*"/>
+    </jar>
+  </target>
+
+  <target name="clean">
+    <delete dir="${lib}" quiet="true"/>
+    <delete dir="${build.root}" quiet="true"/>
+    <delete dir="${build.staging}" quiet="true"/>
+
+    <delete quiet="true">
+      <fileset dir="." includes="**/*.class"/>
+    </delete>
+  </target>
+
+  <target name="rebuild" depends="clean,build"/>
+</project>
